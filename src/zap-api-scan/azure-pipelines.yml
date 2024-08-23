@@ -1,0 +1,52 @@
+# Documentação ZAP API Scan: https://www.zaproxy.org/docs/docker/api-scan/
+trigger:
+- main
+
+variables:
+  vmImageName: 'ubuntu-latest'
+
+stages:
+- stage: DAST
+  displayName: DAST stage
+  variables:
+    - group: dast
+  jobs:
+  - job: DAST
+    displayName: DAST
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - script: |
+        chmod -R 777 ./
+        docker run --name scanapi01 -v $(pwd):/zap/wrk/:rw -t zaproxy/zap-stable zap-api-scan.py -t $(UrlOpenApiSpecification) -f openapi -z "-configfile /zap/wrk/options.prop" -d -r scan-api.html -w scan-api.md
+      displayName: Scan API com ZAP
+    - script: |
+        pws
+        ls
+      displayName: Listar arquivos gerados apos Scan
+      condition: always()
+    - task: PublishMarkdownReports@1
+      inputs:
+        contentPath: '$(Build.SourcesDirectory)'
+        indexFile: 'scan-api.md'
+      displayName: Publicar relatorio Markdown com resultados do Scan API com ZAP
+      condition: always()
+    - task: PublishPipelineArtifact@1
+      inputs:
+        targetPath: '$(Build.SourcesDirectory)/scan-api.md'
+        artifact: 'scan-api-markdown'
+        publishLocation: 'pipeline'
+      displayName: Publicar Artifact com relatorio Markdown com resultados do Scan API com ZAP
+      condition: always()
+    - task: PublishHtmlReport@1
+      inputs:
+        reportDir: 'scan-api.html'
+      displayName: Publicar relatorio HTML com resultados do Scan API com ZAP
+      condition: always()
+    - task: PublishPipelineArtifact@1
+      inputs:
+        targetPath: '$(Build.SourcesDirectory)/scan-api.html'
+        artifact: 'scan-api-html'
+        publishLocation: 'pipeline'
+      displayName: Publicar Artifact com relatorio HTML com resultados do Scan API com ZAP
+      condition: always()
